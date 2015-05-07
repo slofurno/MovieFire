@@ -4,8 +4,10 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
+import com.github.slofurno.moviefire.Events.MovieSearchResult;
+import com.github.slofurno.moviefire.Events.SelectMovieEvent;
 import com.github.slofurno.moviefire.Events.SearchMovieEvent;
-import com.github.slofurno.moviefire.Events.SearchMovieResultEvent;
+import com.github.slofurno.moviefire.Events.NextMovieResult;
 import com.github.slofurno.moviefire.Model.CastDto;
 import com.github.slofurno.moviefire.Model.MovieDto;
 import com.github.slofurno.moviefire.Model.Tuple;
@@ -36,8 +38,29 @@ public class FireService extends Service {
         Thread thread = new Thread() {
             public void run() {
                 try {
-                    MovieDto movie = movies.Search(event.term, MovieDto.class);
+                    List<MovieDto> results = movies.Search(event.term, MovieDto.class);
+                    bus.post(new MovieSearchResult(results));
+                }
+                catch (MalformedURLException | InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        thread.start();
+
+
+    }
+
+    @Subscribe
+    public void recommendMovies(final SelectMovieEvent event){
+
+        Thread thread = new Thread() {
+            public void run() {
+                try {
+                    MovieDto movie = event.movie;
                     List<String>castids = new ArrayList<>();
+
 
                     for(int id : movie.Actors){
                         castids.add(Integer.toString(id));
@@ -52,14 +75,10 @@ public class FireService extends Service {
                     }
 
                     List<CastDto> moviecast = cast.Get(castids, CastDto.class);
-                    List<MovieDto> results = analmovie(moviecast,movie.Id);
-                    bus.post(new SearchMovieResultEvent(results));
+                    List<MovieDto> results = determineRecommendations(moviecast, movie.Id);
+                    bus.post(new NextMovieResult(results));
 
-                } catch (MalformedURLException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (ExecutionException e) {
+                } catch (MalformedURLException | InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
             }
@@ -68,7 +87,7 @@ public class FireService extends Service {
 
     }
 
-    public List<MovieDto> analmovie(List<CastDto> cast, Integer skipid) throws MalformedURLException, InterruptedException, ExecutionException{
+    public List<MovieDto> determineRecommendations(List<CastDto> cast, Integer skipid) throws MalformedURLException, InterruptedException, ExecutionException{
 
         HashMap<Integer, Integer> movies = new HashMap<>();
 
@@ -109,8 +128,7 @@ public class FireService extends Service {
         for(int i = pairs.size()-1; i>=start;i-- ){
             movieids.add(Integer.toString(pairs.get(i).Item1));
         }
-        List<MovieDto> results = movielookup.Get(movieids, MovieDto.class);
-        return results;
+        return movielookup.Get(movieids, MovieDto.class);
     }
 
     @Override

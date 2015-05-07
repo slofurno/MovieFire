@@ -5,6 +5,7 @@ package com.github.slofurno.moviefire.Service;
  */
 
 import com.google.gson.Gson;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -30,15 +31,52 @@ public class FirebaseApi {
         _gson =new Gson();
     }
 
-    public <G> G Search(String term, Class<G> type) throws MalformedURLException, InterruptedException, ExecutionException{
-        String uri = _url + ".json?orderBy=\"$key\"&limitToFirst=1&startAt=\"" + term + "\"";
+    public <G> List<G> Search(String term, final Class<G> type) throws MalformedURLException, InterruptedException, ExecutionException{
+
+        String cleaned = term.toLowerCase().replaceAll("\u0020","");
+        System.out.println(term + " : " + cleaned);
+
+        String uri = _url + ".json?orderBy=\"$key\"&limitToFirst=5&startAt=\"" + cleaned + "\"";
         URL url = new URL(uri);
         String json = downloadAsync(url).get();
 
-        int index = json.indexOf(':');
-        String json2 = json.substring(index + 1, json.length()-1);
-        G result = _gson.fromJson(json2, type);
-        return result;
+        List<String>innerobjects = new ArrayList<>();
+        int depth = 0;
+        int startpos = -1;
+
+        for(int i = 0; i < json.length();i++){
+            char c = json.charAt(i);
+            if (c=='{'){
+                depth++;
+            }
+            else if (c=='}'){
+                if (depth>1){
+                    depth--;
+                }
+                //either the last object or empty response
+                else if(startpos>=0 && i-startpos>=3){
+                    innerobjects.add(json.substring(startpos,i));
+                }
+            }
+            else if (startpos == -1 && depth == 1){
+                startpos = i;
+            }
+            else if (depth==1 && c==','){
+                innerobjects.add(json.substring(startpos,i));
+                startpos = -1;
+            }
+        }
+
+        List<G> results = new ArrayList<>();
+
+        for(String inner : innerobjects){
+            //movie titles with : in them...
+            int index = inner.indexOf(":{");
+            String innerjson = inner.substring(index + 1, inner.length());
+            G innerresult = _gson.fromJson(innerjson, type);
+            results.add(innerresult);
+        }
+        return results;
     }
 
     public <G> List<G> Get(List<String>keys, Class<G> type) throws MalformedURLException, InterruptedException, ExecutionException{

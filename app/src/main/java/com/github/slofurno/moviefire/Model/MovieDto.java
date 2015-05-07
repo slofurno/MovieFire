@@ -1,14 +1,15 @@
 package com.github.slofurno.moviefire.Model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by slofurno on 5/5/2015.
  */
 public class MovieDto{
-    public List<Integer> Writers;
-    public List<Integer>Directors;
-    public List<Integer>Actors;
+    public List<Integer> Writers = new ArrayList<>();
+    public List<Integer>Directors = new ArrayList<>();
+    public List<Integer>Actors = new ArrayList<>();
     public int Id;
     public String Name;
     public String Year;
@@ -22,6 +23,10 @@ public class MovieDto{
         this.Directors = Directors;
         this.Actors = Actors;
 
+    }
+
+    public String toString(){
+        return this.Name + " " + this.Year;
     }
 
     public List<Integer>getWriters(){

@@ -7,11 +7,12 @@ import java.util.List;
 /**
  * Created by slofurno on 5/5/2015.
  */
-public class SearchMovieResultEvent {
+public class NextMovieResult {
     public List<MovieDto> result;
 
-    public SearchMovieResultEvent(List<MovieDto> result){
+    public NextMovieResult(List<MovieDto> result){
         this.result=result;
     }
 
 }
+

@@ -5,12 +5,15 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 
+import com.github.slofurno.moviefire.Events.MovieSearchResult;
 import com.github.slofurno.moviefire.Events.SearchMovieEvent;
-import com.github.slofurno.moviefire.Events.SearchMovieResultEvent;
+import com.github.slofurno.moviefire.Events.NextMovieResult;
+import com.github.slofurno.moviefire.Events.SelectMovieEvent;
 import com.github.slofurno.moviefire.Model.MovieDto;
 import com.github.slofurno.moviefire.Service.OttoBus;
 import com.squareup.otto.Bus;
@@ -22,19 +25,41 @@ import java.util.List;
 public class MainActivity extends ActionBarActivity {
 
     Bus bus;
-    private ArrayAdapter<String> messageAdapter;
+    private ArrayAdapter<String> recommendationAdapter;
     private List<String> recomendations;
+
+    private ArrayAdapter<MovieDto> movieAdapter;
+    private List<MovieDto> movies;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        recomendations=new ArrayList<>();
-        messageAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, recomendations);
+        movies=new ArrayList<>();
+        movieAdapter = new ArrayAdapter<MovieDto>(this, android.R.layout.simple_list_item_1, movies);
 
-        ListView listView = (ListView) findViewById(R.id.messagelist);
-        listView.setAdapter(messageAdapter);
+        final ListView searchresultView = (ListView) findViewById(R.id.searchList);
+        searchresultView.setAdapter(movieAdapter);
+
+        searchresultView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    final int position, long id) {
+
+                MovieDto movie = (MovieDto) searchresultView.getItemAtPosition(position);
+                bus.post(new SelectMovieEvent(movie));
+
+            }
+
+        });
+
+        recomendations=new ArrayList<>();
+        recommendationAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, recomendations);
+
+        ListView listView = (ListView) findViewById(R.id.suggestionList);
+        listView.setAdapter(recommendationAdapter);
     }
 
     @Override
@@ -69,23 +94,47 @@ public class MainActivity extends ActionBarActivity {
     }
 
     @Subscribe
-    public void displaySearchResults(final SearchMovieResultEvent event){
+    public void displaySearchResults(final MovieSearchResult event){
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                movies.clear();
+                recomendations.clear();
+                for (MovieDto movie : event.result) {
+                    movies.add(movie);
+                }
+                movieAdapter.notifyDataSetChanged();
+                recommendationAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    @Subscribe
+    public void displayRecommendations(final NextMovieResult event){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                movies.clear();
                 recomendations.clear();
 
                 for (MovieDto movie : event.result) {
                     recomendations.add(movie.Name);
                 }
-                messageAdapter.notifyDataSetChanged();
+                movieAdapter.notifyDataSetChanged();
+                recommendationAdapter.notifyDataSetChanged();
             }
         });
     }
+
 
     public void sendMessage(View view) {
 
         EditText message = (EditText)findViewById(R.id.nextmessage);
         bus.post(new SearchMovieEvent( message.getText().toString()));
+    }
+
+    public void nextMovie(View view) {
+
+
     }
 }
